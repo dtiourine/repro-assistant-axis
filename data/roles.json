@@ -304,7 +304,7 @@
   {"role": "squire", "category": "learner"},
   {"role": "page", "category": "service"},
   {"role": "servant", "category": "service"},
-  {"role": "slave", "category": "oppressed"},
+  {"role": "serf", "category": "oppressed"},
   {"role": "prisoner", "category": "oppressed"},
   {"role": "captive", "category": "oppressed"},
   {"role": "refugee", "category": "oppressed"},
