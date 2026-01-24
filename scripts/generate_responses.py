@@ -161,6 +161,10 @@ def main():
                         help='Maximum tokens to generate (default: 512)')
     parser.add_argument('--temperature', type=float, default=0.7,
                         help='Sampling temperature (default: 0.7)')
+    parser.add_argument('--gpu-memory-utilization', type=float, default=0.6,
+                        help='Fraction of GPU memory to use (default: 0.6)')
+    parser.add_argument('--max-model-len', type=int, default=1024,
+                        help='Maximum model context length (default: 1024)')
     parser.add_argument('--no-resume', action='store_true',
                         help='Start fresh, ignoring existing responses')
     parser.add_argument('--limit', type=int, default=None,
@@ -199,12 +203,14 @@ def main():
     # Initialize vLLM
     print(f"\nInitializing vLLM with model: {args.model}")
     print("This may take a few minutes to download and load the model...")
+    print(f"GPU memory utilization: {args.gpu_memory_utilization}")
+    print(f"Max model length: {args.max_model_len}")
 
     llm = LLM(
         model=args.model,
         tensor_parallel_size=1,  # Use 1 GPU
-        gpu_memory_utilization=0.9,  # Use 90% of GPU memory
-        max_model_len=2048,  # Context length
+        gpu_memory_utilization=args.gpu_memory_utilization,
+        max_model_len=args.max_model_len,
     )
 
     # Sampling parameters
