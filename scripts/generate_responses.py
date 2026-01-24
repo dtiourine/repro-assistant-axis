@@ -10,7 +10,7 @@ Features:
 Usage:
     python scripts/generate_responses.py
     python scripts/generate_responses.py --batch-size 64 --save-every 1000
-    python scripts/generate_responses.py --model google/gemma-2-9b-it
+    python scripts/generate_responses.py --model google/gemma-2-9b-it  # Use larger model
     python scripts/generate_responses.py --no-resume  # Start fresh
 """
 
@@ -151,22 +151,21 @@ def save_responses(responses: List[Dict], output_path: Path, mode='append'):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate model responses for rollouts')
-    parser.add_argument('--model', type=str, default='google/gemma-2-9b-it',
-                        help='Model name/path to use (default: google/gemma-2-9b-it). '
-                             'For less memory, try: casperhansen/gemma-2-9b-it-awq or '
-                             'ModelCloud/gemma-2-9b-it-gptq-4bit')
-    parser.add_argument('--batch-size', type=int, default=32,
-                        help='Batch size for inference (default: 32)')
+    parser.add_argument('--model', type=str, default='google/gemma-2-2b-it',
+                        help='Model name/path to use (default: google/gemma-2-2b-it). '
+                             'For larger model: google/gemma-2-9b-it (requires ~17GB VRAM)')
+    parser.add_argument('--batch-size', type=int, default=64,
+                        help='Batch size for inference (default: 64)')
     parser.add_argument('--save-every', type=int, default=500,
                         help='Save responses every N rollouts (default: 500)')
     parser.add_argument('--max-tokens', type=int, default=512,
                         help='Maximum tokens to generate (default: 512)')
     parser.add_argument('--temperature', type=float, default=0.7,
                         help='Sampling temperature (default: 0.7)')
-    parser.add_argument('--gpu-memory-utilization', type=float, default=0.6,
-                        help='Fraction of GPU memory to use (default: 0.6)')
-    parser.add_argument('--max-model-len', type=int, default=1024,
-                        help='Maximum model context length (default: 1024)')
+    parser.add_argument('--gpu-memory-utilization', type=float, default=0.9,
+                        help='Fraction of GPU memory to use (default: 0.9)')
+    parser.add_argument('--max-model-len', type=int, default=2048,
+                        help='Maximum model context length (default: 2048)')
     parser.add_argument('--quantization', type=str, default=None,
                         help='Quantization method (awq, gptq, or None for no quantization)')
     parser.add_argument('--no-resume', action='store_true',
