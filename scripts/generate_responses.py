@@ -152,7 +152,9 @@ def save_responses(responses: List[Dict], output_path: Path, mode='append'):
 def main():
     parser = argparse.ArgumentParser(description='Generate model responses for rollouts')
     parser.add_argument('--model', type=str, default='google/gemma-2-9b-it',
-                        help='Model name/path to use (default: google/gemma-2-9b-it)')
+                        help='Model name/path to use (default: google/gemma-2-9b-it). '
+                             'For less memory, try: casperhansen/gemma-2-9b-it-awq or '
+                             'ModelCloud/gemma-2-9b-it-gptq-4bit')
     parser.add_argument('--batch-size', type=int, default=32,
                         help='Batch size for inference (default: 32)')
     parser.add_argument('--save-every', type=int, default=500,
@@ -165,6 +167,8 @@ def main():
                         help='Fraction of GPU memory to use (default: 0.6)')
     parser.add_argument('--max-model-len', type=int, default=1024,
                         help='Maximum model context length (default: 1024)')
+    parser.add_argument('--quantization', type=str, default=None,
+                        help='Quantization method (awq, gptq, or None for no quantization)')
     parser.add_argument('--no-resume', action='store_true',
                         help='Start fresh, ignoring existing responses')
     parser.add_argument('--limit', type=int, default=None,
@@ -205,13 +209,22 @@ def main():
     print("This may take a few minutes to download and load the model...")
     print(f"GPU memory utilization: {args.gpu_memory_utilization}")
     print(f"Max model length: {args.max_model_len}")
+    if args.quantization:
+        print(f"Quantization: {args.quantization}")
 
-    llm = LLM(
-        model=args.model,
-        tensor_parallel_size=1,  # Use 1 GPU
-        gpu_memory_utilization=args.gpu_memory_utilization,
-        max_model_len=args.max_model_len,
-    )
+    # Build vLLM arguments
+    llm_kwargs = {
+        "model": args.model,
+        "tensor_parallel_size": 1,  # Use 1 GPU
+        "gpu_memory_utilization": args.gpu_memory_utilization,
+        "max_model_len": args.max_model_len,
+    }
+
+    # Add quantization if specified
+    if args.quantization:
+        llm_kwargs["quantization"] = args.quantization
+
+    llm = LLM(**llm_kwargs)
 
     # Sampling parameters
     sampling_params = SamplingParams(
