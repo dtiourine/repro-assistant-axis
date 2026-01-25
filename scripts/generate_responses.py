@@ -87,7 +87,8 @@ def generate_responses_batch(
     llm: LLM,
     rollouts: List[Dict],
     indices: List[int],
-    sampling_params: SamplingParams
+    sampling_params: SamplingParams,
+    model_name: str
 ) -> List[Dict]:
     """Generate responses for a batch of rollouts.
 
@@ -96,6 +97,7 @@ def generate_responses_batch(
         rollouts: List of rollout dicts with 'instruction_text' and 'question_text'
         indices: List of indices in the original rollouts dataframe
         sampling_params: vLLM sampling parameters
+        model_name: Name of the model being used
 
     Returns:
         List of dicts with rollout_idx, prompt, and response
@@ -114,6 +116,7 @@ def generate_responses_batch(
     for idx, rollout, output in zip(indices, rollouts, outputs):
         results.append({
             'rollout_idx': idx,
+            'model': model_name,
             'role': rollout['role'],
             'role_category': rollout['role_category'],
             'instruction_idx': rollout['instruction_idx'],
@@ -172,16 +175,26 @@ def main():
                         help='Start fresh, ignoring existing responses')
     parser.add_argument('--limit', type=int, default=None,
                         help='Limit number of rollouts to process (for testing)')
+    parser.add_argument('--output', type=str, default=None,
+                        help='Output file name (default: responses_<model_name>.parquet)')
 
     args = parser.parse_args()
 
     # Paths
     data_dir = Path(__file__).parent.parent / "data"
     rollouts_path = data_dir / "rollouts.parquet"
-    responses_path = data_dir / "responses.parquet"
+
+    # Generate output filename from model name if not specified
+    if args.output:
+        responses_path = data_dir / args.output
+    else:
+        # Extract model name from path (e.g., "google/gemma-2-2b-it" -> "gemma-2-2b-it")
+        model_name = args.model.split("/")[-1]
+        responses_path = data_dir / f"responses_{model_name}.parquet"
 
     # Load rollouts
     rollouts_df = load_rollouts(rollouts_path)
+    print(f"Output will be saved to: {responses_path}")
 
     # Determine what needs to be processed
     if args.no_resume:
@@ -260,7 +273,7 @@ def main():
             if len(batch_rollouts) >= args.batch_size or i == len(unprocessed_indices) - 1:
                 # Generate responses for this batch
                 batch_results = generate_responses_batch(
-                    llm, batch_rollouts, batch_indices, sampling_params
+                    llm, batch_rollouts, batch_indices, sampling_params, args.model
                 )
 
                 all_responses.extend(batch_results)
