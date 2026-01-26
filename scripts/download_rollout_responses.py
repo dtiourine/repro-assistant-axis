@@ -14,7 +14,7 @@ def download_rollouts():
         },
         "Qwen2.5-3B-Instruct": {
             "file_id": "1kPZp_CWBdCOZwwlUe42S-z3eAx9PINE-", 
-            "output": os.path.join(data_dir, "qwen_25_3b_it_responses.parquet")
+            "output": os.path.join(data_dir, "responses_Qwen2.5-3B-Instruct.parquett")
         },
         # "llama-3.2-3b": {
         #     "file_id": "ANOTHER_FILE_ID",
