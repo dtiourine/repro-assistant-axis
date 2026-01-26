@@ -10,12 +10,17 @@ def download_rollouts():
     files = {
         "gemma-2-2b-it": {
             "file_id": "1tBjcTY0weFzI9ynwHxa9z_ODjPwgMjPe",  # From shareable link
-            "output": os.path.join(data_dir, "gemma_2b_responses.parquet")
+            "output": os.path.join(data_dir, "gemma_2b_it_responses.parquet")
+        },
+        "Qwen2.5-3B-Instruct": {
+            "file_id": "1kPZp_CWBdCOZwwlUe42S-z3eAx9PINE-", 
+            "output": os.path.join(data_dir, "qwen_25_3b_it_responses.parquet")
         },
         # "llama-3.2-3b": {
         #     "file_id": "ANOTHER_FILE_ID",
         #     "output": "data/llama_3b_rollouts.jsonl"
         # }
+        
     }
     
     for name, info in files.items():
