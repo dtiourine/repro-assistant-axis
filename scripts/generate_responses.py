@@ -177,12 +177,14 @@ def main():
                         help='Limit number of rollouts to process (for testing)')
     parser.add_argument('--output', type=str, default=None,
                         help='Output file name (default: responses_<model_name>.parquet)')
+    parser.add_argument('--rollouts', type=str, default='rollouts.parquet',
+                        help='Input rollouts file (default: rollouts.parquet)')
 
     args = parser.parse_args()
 
     # Paths
     data_dir = Path(__file__).parent.parent / "data"
-    rollouts_path = data_dir / "rollouts.parquet"
+    rollouts_path = data_dir / args.rollouts
 
     # Generate output filename from model name if not specified
     if args.output:
@@ -190,7 +192,12 @@ def main():
     else:
         # Extract model name from path (e.g., "google/gemma-2-2b-it" -> "gemma-2-2b-it")
         model_name = args.model.split("/")[-1]
-        responses_path = data_dir / f"responses_{model_name}.parquet"
+        # Include rollouts source in filename if not using default rollouts
+        if args.rollouts != 'rollouts.parquet':
+            rollouts_name = args.rollouts.replace('rollouts_', '').replace('.parquet', '')
+            responses_path = data_dir / f"responses_{rollouts_name}_{model_name}.parquet"
+        else:
+            responses_path = data_dir / f"responses_{model_name}.parquet"
 
     # Load rollouts
     rollouts_df = load_rollouts(rollouts_path)
