@@ -14,12 +14,13 @@ def download_rollouts():
         },
         "Qwen2.5-3B-Instruct": {
             "file_id": "1kPZp_CWBdCOZwwlUe42S-z3eAx9PINE-", 
-            "output": os.path.join(data_dir, "responses_Qwen2.5-3B-Instruct.parquett")
+            "output": os.path.join(data_dir, "responses_Qwen2.5-3B-Instruct.parquet")
         },
-        # "llama-3.2-3b": {
-        #     "file_id": "ANOTHER_FILE_ID",
-        #     "output": "data/llama_3b_rollouts.jsonl"
-        # }
+        "Llama-3.2-3B-Instruct": {
+            "file_id": "1A7M9IE216njQ3kX3KbKqv0qODKPbBk3e",
+            "output": os.path.join(data_dir, "responses_Llama-3.2-3B-Instruct.parquet")
+        }
+        
         
     }
     
