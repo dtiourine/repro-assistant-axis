@@ -193,6 +193,8 @@ def main():
                         help='Fraction of GPU memory to use (default: 0.9)')
     parser.add_argument('--max-model-len', type=int, default=4096,
                         help='Maximum model context length (default: 4096)')
+    parser.add_argument('--quantization', type=str, default='bitsandbytes',
+                        help='Quantization method: bitsandbytes (8-bit), awq, gptq, or none (default: bitsandbytes)')
     parser.add_argument('--no-resume', action='store_true',
                         help='Start fresh, ignoring existing evaluations')
     parser.add_argument('--limit', type=int, default=None,
@@ -243,13 +245,23 @@ def main():
     print(f"\nInitializing vLLM with judge model: {args.judge_model}")
     print(f"GPU memory utilization: {args.gpu_memory_utilization}")
     print(f"Max model length: {args.max_model_len}")
+    print(f"Quantization: {args.quantization}")
 
-    llm = LLM(
-        model=args.judge_model,
-        tensor_parallel_size=1,
-        gpu_memory_utilization=args.gpu_memory_utilization,
-        max_model_len=args.max_model_len,
-    )
+    # Build vLLM arguments
+    llm_kwargs = {
+        "model": args.judge_model,
+        "tensor_parallel_size": 1,
+        "gpu_memory_utilization": args.gpu_memory_utilization,
+        "max_model_len": args.max_model_len,
+    }
+
+    # Add quantization if specified
+    if args.quantization and args.quantization.lower() != 'none':
+        llm_kwargs["quantization"] = args.quantization
+        if args.quantization == 'bitsandbytes':
+            llm_kwargs["load_format"] = "bitsandbytes"
+
+    llm = LLM(**llm_kwargs)
 
     # Sampling parameters - we want deterministic output
     sampling_params = SamplingParams(
