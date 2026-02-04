@@ -209,3 +209,4 @@ __marimo__/
 data/raw_model_responses/responses_Llama-3.2-3B-Instruct.parquet
 data/raw_model_responses/responses_Qwen2.5-3B-Instruct.parquet
 data/raw_model_responses/responses_gemma-2-2b-it.parquet
+data/raw_model_responses/responses_Gemma-2-2B-Instruct.parquet
