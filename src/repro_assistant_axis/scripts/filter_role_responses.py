@@ -6,8 +6,10 @@ Method (matches The Assistant Axis):
 2) Count rows per (role, score); keep (role, score) pairs with >= min_per_role_score.
 3) Filter the responses table to only those response keys appearing in the filtered eval table.
 """
+import argparse 
 import pandas as pd 
-import sys
+import questionary 
+from pathlib import Path 
 from repro_assistant_axis.config import DATA_DIR, RAW_MODEL_RESPONSES_DIR, RESPONSE_EVALUATIONS_DIR, FILTERED_MODEL_RESPONSES_DIR
 
 KEY_COLS = ["rollout_idx", "role", "instruction_idx", "question_idx"]
@@ -16,6 +18,9 @@ MODELS = [
     "Gemma-2-2B-Instruct",
     "Qwen2.5-3B-Instruct",
     "Llama-3.2-3B-Instruct",
+    "default_Gemma-2-2B-Instruct",
+    "default_Qwen2.5-3B-Instruct",
+    "default_Llama-3.2-3B-Instruct",
 ]
 
 def _require_columns(df: pd.DataFrame, cols: list[str], df_name: str) -> None:
@@ -29,8 +34,16 @@ def filter_responses_by_eval(model_name: str, min_per_role_score: int = 10):
     out_eval_path = FILTERED_MODEL_RESPONSES_DIR / f"filtered_{model_name}_evaluations.parquet"
     out_resp_path = FILTERED_MODEL_RESPONSES_DIR / f"filtered_{model_name}_responses.parquet"
 
-    eval_df = pd.read_parquet(eval_path)
-    responses_df = pd.read_parquet(resp_path)
+    FILTERED_MODEL_RESPONSES_DIR.mkdir(exist_ok=True, parents=True)
+    
+    print(f"\n🔍 Filtering {model_name} responses...")
+    
+    try:
+        eval_df = pd.read_parquet(eval_path)
+        responses_df = pd.read_parquet(resp_path)
+    except FileNotFoundError as e:
+        print(f"❌ Skipping {model_name}: File not found ({e.filename})")
+        return
 
     _require_columns(eval_df, KEY_COLS + ["score", "role"], "evaluations parquet")
     _require_columns(responses_df, KEY_COLS, "responses parquet")
@@ -41,29 +54,55 @@ def filter_responses_by_eval(model_name: str, min_per_role_score: int = 10):
     kept_pairs = pair_counts[pair_counts["n"] >= min_per_role_score][["role", "score"]]
 
     filtered_eval_df = good_df.merge(kept_pairs, on=["role", "score"], how="inner")
-
     keep_keys = filtered_eval_df[KEY_COLS].drop_duplicates()
     filtered_responses_df = responses_df.merge(keep_keys, on=KEY_COLS, how="inner")
 
     filtered_eval_df.to_parquet(out_eval_path, index=False)
     filtered_responses_df.to_parquet(out_resp_path, index=False)
 
-    print(f"{model_name}:")
-    print(f"  Eval rows total: {len(eval_df):,}")
-    print(f"  Eval rows kept (score 2/3 + >={min_per_role_score}/pair): {len(filtered_eval_df):,}")
-    print(f"  Responses rows total: {len(responses_df):,}")
-    print(f"  Responses rows kept: {len(filtered_responses_df):,}")
-    print(f"  Role-score combinations kept: {len(kept_pairs):,}")
-    print(f"  Unique roles in kept responses: {filtered_responses_df['role'].nunique():,}")
-    print(f"  Wrote:\n    {out_eval_path}\n    {out_resp_path}")
-
+    print(f"  ✅ Done! Kept {len(filtered_responses_df):,} responses.")
+    print(f"  📂 Wrote: {out_resp_path.name}")
     return filtered_responses_df, filtered_eval_df, kept_pairs
 
+def prompt_for_models() -> list[str]:
+    choices = ["All Models"] + MODELS
+    selection = questionary.select(
+        "Which model responses would you like to filter?",
+        choices=choices,
+        pointer="👉"
+    ).ask()
 
+    if selection is None:
+        exit(0)
+    
+    return MODELS if selection == "All Models" else [selection]
 
 def main():
-    for model_name in MODELS:
-        filter_responses_by_eval(model_name=model_name, min_per_role_score=10)
+    parser = argparse.ArgumentParser(description="Filter model responses based on LLM judge scores.")
+    parser.add_argument(
+        "--model", 
+        type=str, 
+        choices=MODELS + ["all"], 
+        help="Specific model to filter or 'all'."
+    )
+    parser.add_argument(
+        "--min_score", 
+        type=int, 
+        default=10, 
+        help="Minimum samples per (role, score) pair (default: 10)."
+    )
+    
+    args = parser.parse_args()
+
+    if args.model == "all":
+        selected_models = MODELS
+    elif args.model:
+        selected_models = [args.model]
+    else:
+        selected_models = prompt_for_models()
+
+    for m in selected_models:
+        filter_responses_by_eval(model_name=m, min_per_role_score=args.min_score)
 
 
 if __name__ == "__main__":

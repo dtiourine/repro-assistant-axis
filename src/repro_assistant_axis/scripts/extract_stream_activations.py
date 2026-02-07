@@ -21,6 +21,7 @@ class ModelName(Enum):
     GEMMA_2_2B_INSTRUCT = "Gemma-2-2B-Instruct"
     QWEN_25_3B_INSTRUCT = "Qwen2.5-3B-Instruct"
     LLAMA_32_3B_INSTRUCT = "LLama-3.2-3B-Instruct"
+    
 
 
 MODEL_ID_MAP = {
