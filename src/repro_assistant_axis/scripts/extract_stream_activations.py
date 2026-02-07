@@ -1,4 +1,5 @@
 import argparse 
+import questionary 
 from enum import Enum
 from pathlib import Path
 from typing import Union
@@ -137,17 +138,37 @@ def extract_activation_vectors(
         fname = f"acts_{chunk['rollout_idx'][0]}_to_{chunk['rollout_idx'][-1]}.parquet"
         result_chunk.write_parquet(output_dir / fname)
         print(f"✅ Saved {fname}")
+        
+def prompt_for_model() -> ModelName:
+    """Displays an interactive arrow-key menu to select a model."""
+    choices = [m.value for m in ModelName]
+    
+    selected_value = questionary.select(
+        "Which model would you like to process?",
+        choices=choices,
+        pointer="👉",  
+        use_shortcuts=True 
+    ).ask()
+    
+    if selected_value is None:
+        print("Selection cancelled. Exiting.")
+        exit(0)
+
+    return next(m for m in ModelName if m.value == selected_value)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract residual stream activations from model responses.")
-    parser.add_argument("--model", type=str, required=True, choices=[m.value for m in ModelName], help="The model enum value")
+    parser.add_argument("--model", type=str, choices=[m.value for m in ModelName], help="The model enum value")
     parser.add_argument("--input", type=str, default=None, help="Optional custom path to responses.parquet")
     parser.add_argument("--batch_size", type=int, default=128, help="GPU inference batch size")
     
     args = parser.parse_args()
     
-    selected_model = next(m for m in ModelName if m.value == args.model)
+    if args.model:
+        selected_model = next(m for m in ModelName if m.value == args.model)
+    else:
+        selected_model = prompt_for_model()
     
     extract_activation_vectors(
         model_name=selected_model, 
