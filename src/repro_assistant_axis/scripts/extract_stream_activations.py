@@ -3,6 +3,7 @@ import questionary
 from enum import Enum
 from pathlib import Path
 from typing import Union
+from tqdm import tqdm 
 
 import torch
 from repro_assistant_axis.config import (
@@ -94,7 +95,7 @@ def extract_activation_vectors(
     model_name: ModelName,
     response_data_path: Union[str, Path] | None = None,
     chunk_size: int = 1000,
-    batch_size: int = 128
+    batch_size: int = 32
 ):
     df = load_model_responses(model_name, response_data_path)
     validate_dataset_integrity(df)
@@ -118,6 +119,8 @@ def extract_activation_vectors(
 
     model, hook_name = get_model_and_metadata(model_name)
     
+    pbar = tqdm(total=todo_df.height, desc=f"🚀 {model_name.value}", unit="rows")
+    
     for i in range(0, todo_df.height, chunk_size):
         chunk = todo_df.slice(i, chunk_size)
         all_acts = []
@@ -133,6 +136,8 @@ def extract_activation_vectors(
                 acts = cache[hook_name][:, -1, :].detach().cpu().numpy()
                 all_acts.extend(acts.tolist())
                 del cache 
+                
+            pbar.update(len(prompts))
 
         result_chunk = chunk.with_columns(activations=pl.Series(all_acts))
         fname = f"acts_{chunk['rollout_idx'][0]}_to_{chunk['rollout_idx'][-1]}.parquet"
@@ -161,7 +166,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract residual stream activations from model responses.")
     parser.add_argument("--model", type=str, choices=[m.value for m in ModelName], help="The model enum value")
     parser.add_argument("--input", type=str, default=None, help="Optional custom path to responses.parquet")
-    parser.add_argument("--batch_size", type=int, default=128, help="GPU inference batch size")
+    parser.add_argument("--batch_size", type=int, default=32, help="GPU inference batch size")
     
     args = parser.parse_args()
     
