@@ -21,13 +21,18 @@ class ModelName(Enum):
     GEMMA_2_2B_INSTRUCT = "Gemma-2-2B-Instruct"
     QWEN_25_3B_INSTRUCT = "Qwen2.5-3B-Instruct"
     LLAMA_32_3B_INSTRUCT = "LLama-3.2-3B-Instruct"
-    
+    DEFAULT_GEMMA_2_2B_INSTRUCT = "default_Gemma-2-2B-Instruct"
+    DEFAULT_QWEN_25_3B_INSTRUCT = "default_Qwen2.5-3B-Instruct"
+    DEFAULT_LLAMA_32_3B_INSTRUCT = "default_Llama-3.2-3B-Instruct"
 
 
 MODEL_ID_MAP = {
     ModelName.GEMMA_2_2B_INSTRUCT: "google/gemma-2-2b-it",
     ModelName.QWEN_25_3B_INSTRUCT: "Qwen/Qwen2.5-3B-Instruct",
     ModelName.LLAMA_32_3B_INSTRUCT: "meta-llama/Llama-3.2-3B-Instruct",
+    ModelName.DEFAULT_GEMMA_2_2B_INSTRUCT: "google/gemma-2-2b-it",
+    ModelName.DEFAULT_QWEN_25_3B_INSTRUCT: "Qwen/Qwen2.5-3B-Instruct",
+    ModelName.DEFAULT_LLAMA_32_3B_INSTRUCT: "meta-llama/Llama-3.2-3B-Instruct",
 }
 
 
@@ -129,7 +134,7 @@ def extract_activation_vectors(
         for j in range(0, chunk.height, batch_size):
             mini_batch = chunk.slice(j, batch_size)
             prompts = mini_batch["response"].to_list()
-            
+
             torch.cuda.empty_cache()
 
             with torch.no_grad():
@@ -148,6 +153,13 @@ def extract_activation_vectors(
         fname = f"acts_{chunk['rollout_idx'][0]}_to_{chunk['rollout_idx'][-1]}.parquet"
         result_chunk.write_parquet(output_dir / fname)
         print(f"✅ Saved {fname}")
+
+
+def merge_parquet_chunks(input_dir: Path, output_file: Path):
+    print(f"Reading chunks from {input_dir}...")
+    lazy_df = pl.scan_parquet(input_dir / "*.parquet")
+    lazy_df.sink_parquet(output_file, compression="zstd", row_group_size=100_000)
+    print("✅ Successfully merged all chunks!")
 
 
 def prompt_for_model() -> ModelName:
@@ -187,6 +199,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size", type=int, default=32, help="GPU inference batch size"
     )
+    parser.add_argument(
+        "--merge", action="store_true", help="Automatically merge chunks when done"
+    )
 
     args = parser.parse_args()
 
@@ -200,3 +215,16 @@ if __name__ == "__main__":
         response_data_path=args.input,
         batch_size=args.batch_size,
     )
+    
+    if args.merge:
+        print("\n🧹 Extraction complete. Starting auto-merge...")
+        input_dir = MODEL_RESPONSE_ACTIVATIONS_DIR / f"{selected_model.value}_activations"
+        output_file = MODEL_RESPONSE_ACTIVATIONS_DIR / f"{selected_model.value}_activations.parquet"
+
+        merge_parquet_chunks(input_dir, output_file)
+        
+        if questionary.confirm("Delete the individual chunk files to save space?").ask():
+            for f in input_dir.glob("*.parquet"):
+                f.unlink()
+            input_dir.rmdir()
+            print("Workspace cleaned.")
